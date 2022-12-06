@@ -30,7 +30,7 @@ fn get_round_score_pt2(round: &(char, char)) -> usize {
 }
 
 pub fn run() {
-    println!("== Day 02 ==");
+    println!("\n=== Day 02 ===");
     let input = read_lines("src/day02/input.txt")
         .expect("error reading input file")
         .map(|l| {

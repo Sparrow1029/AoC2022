@@ -10,3 +10,12 @@ where
     let file = File::open(filename)?;
     Ok(io::BufReader::new(file).lines())
 }
+
+/// Get index of max value of collection of items that are Copy
+pub fn get_max_index_copy<T: Ord + Copy>(slice: &[T]) -> Option<usize> {
+    slice
+        .iter()
+        .enumerate()
+        .max_by_key(|(_, &value)| value)
+        .map(|(idx, _)| idx)
+}
