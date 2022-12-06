@@ -33,23 +33,12 @@ fn parse_input() -> Vec<String> {
 }
 
 fn get_shared_item_priority(rucksacks: &[String]) -> u8 {
-    let sets: Vec<HashSet<char>> = rucksacks
-        .iter()
-        .map(|s| s.chars().collect::<HashSet<char>>())
-        .collect();
-
-    let common: char = if let Some((first, rest)) = sets.split_first() {
-        *rest
-            .iter()
-            .fold(first.clone(), |acc, i| {
-                acc.intersection(&i).copied().collect()
-            })
-            .iter()
-            .next()
-            .unwrap()
-    } else {
-        panic!("No common found")
-    };
+    let (first, rest) = rucksacks.split_at(1);
+    let common = first[0]
+        .chars()
+        .filter(|c| rest[0].contains(*c) && rest[1].contains(*c))
+        .next()
+        .expect("No common item found");
     get_priority(&common)
 }
 

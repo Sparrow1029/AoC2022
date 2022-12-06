@@ -11,6 +11,7 @@ where
     Ok(io::BufReader::new(file).lines())
 }
 
+#[allow(dead_code)]
 /// Get index of max value of collection of items that are Copy
 pub fn get_max_index_copy<T: Ord + Copy>(slice: &[T]) -> Option<usize> {
     slice
