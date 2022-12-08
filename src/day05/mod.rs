@@ -113,6 +113,7 @@ pub fn part2() {
 }
 
 pub fn run() {
+    println!("\n=== Day 05 ===");
     part1();
     part2();
 }
