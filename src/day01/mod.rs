@@ -9,25 +9,23 @@ pub fn run() {
     let mut total = 0;
     let mut cur_max = 0;
 
-    for line in input_lines {
-        if let Ok(val) = line {
-            match val.trim().is_empty() {
-                true => {
-                    if total > cur_max {
-                        cur_max = total;
-                    }
-                    calorie_totals.push(total);
-                    total = 0;
-                    continue;
+    for line in input_lines.flatten() {
+        match line.trim().is_empty() {
+            true => {
+                if total > cur_max {
+                    cur_max = total;
                 }
-                false => {
-                    total += val.trim().parse::<usize>().expect("not a number");
-                }
+                calorie_totals.push(total);
+                total = 0;
+                continue;
+            }
+            false => {
+                total += line.trim().parse::<usize>().expect("not a number");
             }
         }
     }
     calorie_totals.sort_by(|a, b| b.cmp(a));
 
-    println!("Part 1: {}", cur_max);
+    println!("Part 1: {cur_max}");
     println!("Part 2: {}", calorie_totals[0..3].iter().sum::<usize>());
 }

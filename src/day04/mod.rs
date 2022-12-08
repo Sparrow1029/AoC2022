@@ -7,7 +7,7 @@ struct SectionAssignmentPair {
 }
 
 impl SectionAssignmentPair {
-    fn new(input_string: &String) -> Self {
+    fn new(input_string: &str) -> Self {
         let values = input_string
             .split(|c| c == ',' || c == '-')
             .map(|c| c.parse::<usize>().unwrap())

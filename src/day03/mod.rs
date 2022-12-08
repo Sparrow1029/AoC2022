@@ -16,7 +16,7 @@ fn part1(input: &Vec<String>) -> usize {
     total
 }
 
-fn part2(input: &Vec<String>) -> usize {
+fn part2(input: &[String]) -> usize {
     let mut total = 0;
     for group in input.chunks(3) {
         total += get_shared_item_priority(group) as usize;
@@ -36,8 +36,7 @@ fn get_shared_item_priority(rucksacks: &[String]) -> u8 {
     let (first, rest) = rucksacks.split_at(1);
     let common = first[0]
         .chars()
-        .filter(|c| rest[0].contains(*c) && rest[1].contains(*c))
-        .next()
+        .find(|c| rest[0].contains(*c) && rest[1].contains(*c))
         .expect("No common item found");
     get_priority(&common)
 }
@@ -49,8 +48,7 @@ fn get_dup_item_priority_from_rucksack(rucksack: &String) -> u8 {
         s2.chars().collect::<HashSet<char>>(),
     );
     let mut intersection = set1.intersection(&set2);
-    let ret = get_priority(intersection.next().unwrap());
-    ret
+    get_priority(intersection.next().unwrap())
 }
 
 fn get_priority(c: &char) -> u8 {

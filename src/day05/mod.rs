@@ -9,6 +9,7 @@ type Move = (usize, usize, usize);
 
 /// Take the first 8 lines of the input, and read them as bytes
 /// to be inserted into arrays
+#[allow(clippy::needless_range_loop)]
 fn populate_stacks(stacks: &mut Stacks) {
     let lines = read_lines("src/day05/input.txt")
         .expect("error reading input file")
@@ -18,7 +19,7 @@ fn populate_stacks(stacks: &mut Stacks) {
     for line in lines.take(8) {
         cur_top_pos -= 1;
         let mut iter = line.bytes().skip(1);
-        stacks[0][cur_top_pos] = iter.nth(0).unwrap();
+        stacks[0][cur_top_pos] = iter.next().unwrap();
         for i in 1..9 {
             if let Some(val) = iter.nth(3) {
                 match val {

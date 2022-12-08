@@ -12,17 +12,15 @@ mod day05;
 const DAYS: [fn(); 5] = [day01::run, day02::run, day03::run, day04::run, day05::run];
 
 fn parse_input() {
-    let input = args().skip(1).next().expect("error getting arg");
-    if input.to_lowercase() == "all".to_string() {
+    let input = args().nth(1).expect("error getting arg");
+    if input.to_lowercase() == "all" {
         run_all()
-    } else {
-        if let Some(day) = input.parse::<isize>().ok() {
-            if day <= 0 || day > 25 {
-                println!("Not a valid day. Running all days.");
-                run_all();
-            } else {
-                DAYS[day as usize - 1]();
-            }
+    } else if let Ok(day) = input.parse::<isize>() {
+        if day <= 0 || day > 25 {
+            println!("Not a valid day. Running all days.");
+            run_all();
+        } else {
+            DAYS[day as usize - 1]();
         }
     }
 }
