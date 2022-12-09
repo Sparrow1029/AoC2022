@@ -9,14 +9,16 @@ mod day03;
 mod day04;
 mod day05;
 mod day06;
+mod day07;
 
-const DAYS: [fn(); 6] = [
+const DAYS: [fn(); 7] = [
     day01::run,
     day02::run,
     day03::run,
     day04::run,
     day05::run,
     day06::run,
+    day07::run,
 ];
 
 fn parse_input() {
