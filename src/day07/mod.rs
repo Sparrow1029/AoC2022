@@ -1,141 +1,114 @@
-use crate::shared::read_lines;
-use std::{borrow::Borrow, cell::RefCell, rc::Rc};
+mod parse;
 
-#[derive(Debug, Copy, Clone, PartialEq)]
-enum InodeType {
-    Root,
-    Dir,
-    File,
-}
+use camino::Utf8PathBuf;
 
-#[derive(Debug, PartialEq)]
+use crate::day07::parse::{parse_input, Command, Entry, Line};
+
+#[allow(dead_code)]
+#[derive(Debug)]
 struct Inode {
-    size: usize,
-    name: String,
-    kind: InodeType,
-    parent: Option<Rc<RefCell<Inode>>>,
-    children: Vec<Rc<RefCell<Inode>>>,
+    path: Utf8PathBuf,
+    size: u64,
+    children: Vec<Inode>,
 }
 
 impl Inode {
-    fn new(size: usize, name: &str, kind: InodeType) -> Self {
-        Inode {
-            size,
-            name: name.to_string(),
-            kind,
-            parent: None,
-            children: vec![],
-        }
+    fn total_size(&self) -> u64 {
+        self.size + self.children.iter().map(|c| c.total_size()).sum::<u64>()
     }
 
-    fn add_child(&mut self, new_node: Rc<RefCell<Inode>>) {
-        self.children.push(new_node);
-    }
-
-    fn print_dfs(&self, depth: usize) {
-        println!(
-            "{}{}{} {}",
-            " ".repeat(depth * 4),
-            self.name,
-            match self.kind {
-                InodeType::Dir => '/',
-                _ => '\0',
-            },
-            self.size
-        );
-        for child in self.children.iter() {
-            child.as_ref().borrow().print_dfs(depth + 1)
-        }
+    fn all_dirs(&self) -> Box<dyn Iterator<Item = &Inode> + '_> {
+        Box::new(
+            std::iter::once(self).chain(
+                self.children
+                    .iter()
+                    .filter(|c| !c.children.is_empty())
+                    .flat_map(|c| c.all_dirs()),
+            ),
+        )
     }
 }
 
-fn create_ref_node(size: usize, name: &str, kind: InodeType) -> Rc<RefCell<Inode>> {
-    Rc::new(RefCell::new(Inode::new(size, name, kind)))
-}
+fn create_filesystem(input_lines: Vec<Line>) -> Inode {
+    let mut stack = vec![Inode {
+        path: "/".into(),
+        size: 0,
+        children: vec![],
+    }];
 
-fn insert_node(parent: Rc<RefCell<Inode>>, child: Rc<RefCell<Inode>>) {
-    let mut mut_child = (*child).borrow_mut();
-    mut_child.parent = Some(Rc::clone(&parent));
-    (*parent).borrow_mut().add_child(Rc::clone(&child));
-}
-
-fn get_node(tree: Rc<RefCell<Inode>>, name: &str) -> Option<Rc<RefCell<Inode>>> {
-    if (*tree).borrow().name == name {
-        return Some(Rc::clone(&tree));
-    } else {
-        for child in (*tree).borrow().children.iter() {
-            return get_node(Rc::clone(child), name);
-        }
-    }
-    None
-}
-
-fn get_parent(node: Rc<RefCell<Inode>>) -> Option<Rc<RefCell<Inode>>> {
-    if let Some(parent) = (*node).borrow().parent.as_ref() {
-        get_node(Rc::clone(&node), &parent.as_ref().borrow().name)
-    } else {
-        None
-    }
-}
-
-fn parse_input(root: Rc<RefCell<Inode>>) {
-    let shell = read_lines("src/day07/input.txt")
-        .expect("error reading file")
-        .map(|l| {
-            l.expect("error reading line")
-                .split(' ')
-                .map(str::to_owned)
-                .collect::<Vec<_>>()
-        });
-
-    let mut current = Rc::clone(&root);
-
-    for line in shell {
-        (*current).borrow().print_dfs(0);
-        let first_char = line[0].clone();
-        match first_char.as_str() {
-            "$" => match line[1].clone().as_str() {
-                "cd" => {
-                    let new_cur_node_name = line[2].clone();
-                    match new_cur_node_name.as_str() {
-                        ".." => {
-                            let parent = get_parent(Rc::clone(&current));
-                            if let Some(node) = parent {
-                                current = Rc::clone(&node)
-                            } else {
-                                unreachable!()
-                            }
-                        }
-                        _ => current = get_node(Rc::clone(&current), &new_cur_node_name).unwrap(),
+    for line in input_lines {
+        // println!("{line:?}");
+        match line {
+            Line::Command(cmd) => match cmd {
+                Command::Ls => {}
+                Command::Cd(path) => match path.as_str() {
+                    "/" => {}
+                    ".." => {
+                        let child = stack.pop();
+                        stack.last_mut().unwrap().children.push(child.unwrap());
                     }
-                }
-                "ls" => continue,
-                _ => unreachable!(),
+                    _ => {
+                        let node = Inode {
+                            path: path.clone(),
+                            size: 0,
+                            children: vec![],
+                        };
+                        stack.push(node);
+                    }
+                },
             },
-            "dir" => {
-                let dir_name = line[1].as_str();
-                if get_node(Rc::clone(&current), dir_name).is_some() {
-                    continue;
-                } else {
-                    let new_node = create_ref_node(0, dir_name, InodeType::Dir);
-                    insert_node(Rc::clone(&current), new_node);
+            Line::Entry(entry) => match entry {
+                Entry::Dir(_) => {}
+                Entry::File(size, path) => {
+                    let node = Inode {
+                        size,
+                        path,
+                        children: vec![],
+                    };
+                    stack.last_mut().unwrap().children.push(node);
                 }
-            }
-            // This should be a digit
-            _ => {
-                let size = first_char.parse::<usize>().unwrap();
-                let name = line[1].clone();
-                let child = create_ref_node(size, &name, InodeType::File);
-                insert_node(Rc::clone(&current), child);
-            }
+            },
         }
     }
+    let mut root = stack.pop().unwrap();
+
+    while let Some(mut next) = stack.pop() {
+        next.children.push(root);
+        root = next;
+    }
+    root
 }
 
-pub fn run() {
-    let root = Rc::new(RefCell::new(Inode::new(0, "/", InodeType::Root)));
-    parse_input(Rc::clone(&root));
-    root.as_ref().borrow().print_dfs(0);
+fn part1(fs: &Inode) {
+    let sum = fs
+        .all_dirs()
+        .map(|d| d.total_size())
+        .filter(|&s| s <= 100_000)
+        .sum::<u64>();
+    println!("Part 1: {sum}");
+}
 
-    // parse_input(&mut root);
+fn part2(fs: &Inode) {
+    let total_space = 70_000_000_u64;
+    let used_space = fs.total_size();
+    let free_space = total_space.checked_sub(used_space).unwrap();
+    let needed_free_space = 30_000_000_u64;
+    let minimum_space_to_free = needed_free_space.checked_sub(free_space).unwrap();
+
+    let size_to_remove = fs
+        .all_dirs()
+        .map(|d| d.total_size())
+        .filter(|&s| s >= minimum_space_to_free)
+        .min()
+        .unwrap();
+    println!("Part 2: {size_to_remove}");
+}
+
+pub(crate) fn run() {
+    let input_lines = parse_input("src/day07/input.txt").expect("error parsing input");
+    let fs = create_filesystem(input_lines);
+    // dbg!(&fs);
+
+    part1(&fs);
+    part2(&fs);
 }

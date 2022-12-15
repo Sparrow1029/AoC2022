@@ -2,3 +2,8 @@
 name = "aoc_2022"
 version = "0.1.0"
 edition = "2021"
+
+[dependencies]
+camino = "1.1.1"
+color-eyre = "0.6.2"
+nom = "7.1.1"

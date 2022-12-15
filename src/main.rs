@@ -42,5 +42,6 @@ fn run_all() {
 }
 
 fn main() {
+    color_eyre::install().unwrap();
     parse_input();
 }
