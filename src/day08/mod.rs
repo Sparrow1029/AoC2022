@@ -130,7 +130,7 @@ fn get_scenic_score(grid: &Grid<usize>, coord: Coord2d) -> usize {
         }
     }
 
-    scores.iter().fold(1, |acc, x| acc * x)
+    scores.iter().product()
 }
 
 fn part2(grid: &Grid<usize>) {

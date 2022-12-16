@@ -126,10 +126,8 @@ where
         let mut rows = vec![];
         for (y, row_data) in self.rows().iter().enumerate() {
             let mut row = vec![];
-            let mut x = 0;
-            for v in row_data.iter() {
-                row.push(((x, y), v.clone()));
-                x += 1;
+            for (i, v) in row_data.iter().enumerate() {
+                row.push(((i, y), v.clone()));
             }
             rows.push(row);
         }
@@ -140,10 +138,8 @@ where
         let mut cols = vec![];
         for (x, col_data) in self.cols().iter().enumerate() {
             let mut col = vec![];
-            let mut y = 0;
-            for v in col_data.iter() {
-                col.push(((x, y), v.clone()));
-                y += 1;
+            for (i, v) in col_data.iter().enumerate() {
+                col.push(((x, i), v.clone()));
             }
             cols.push(col);
         }
