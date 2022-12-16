@@ -1,6 +1,7 @@
 use std::fs::read_to_string;
 
 pub fn run() {
+    println!("\n=== Day 06 ===");
     let input = read_to_string("src/day06/input.txt").expect("failed to open file");
     println!("Part 1: {}", get_marker(&input, 4));
     println!("Part 2: {}", get_marker(&input, 14));

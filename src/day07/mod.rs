@@ -105,6 +105,7 @@ fn part2(fs: &Inode) {
 }
 
 pub(crate) fn run() {
+    println!("\n=== Day 07 ===");
     let input_lines = parse_input("src/day07/input.txt").expect("error parsing input");
     let fs = create_filesystem(input_lines);
     // dbg!(&fs);

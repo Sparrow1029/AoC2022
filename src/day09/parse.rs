@@ -54,6 +54,12 @@ impl std::ops::Sub for GridPos {
     }
 }
 
+impl From<(i32, i32)> for GridPos {
+    fn from((x, y): (i32, i32)) -> GridPos {
+        GridPos { x, y }
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub(crate) enum Direction {
     Up,

@@ -145,6 +145,7 @@ fn part2(grid: &Grid<usize>) {
 }
 
 pub fn run() {
+    println!("\n=== Day 08 ===");
     let input_str = include_str!("input.txt");
     let grid = parse_grid(input_str);
 
