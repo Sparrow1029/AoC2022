@@ -28,16 +28,19 @@ const DAYS: [fn(); 10] = [
 ];
 
 fn parse_input() {
-    let input = args().nth(1).expect("error getting arg");
-    if input.to_lowercase() == "all" {
-        run_all()
-    } else if let Ok(day) = input.parse::<isize>() {
-        if day <= 0 || day > 25 {
-            println!("Not a valid day. Running all days.");
-            run_all();
-        } else {
-            DAYS[day as usize - 1]();
+    if let Some(input) = args().nth(1) {
+        if input.to_lowercase() == "all" {
+            run_all()
+        } else if let Ok(day) = input.parse::<isize>() {
+            if day <= 0 || day > 25 {
+                println!("Not a valid day. Running all days.");
+                run_all();
+            } else {
+                DAYS[day as usize - 1]();
+            }
         }
+    } else {
+        run_all()
     }
 }
 
