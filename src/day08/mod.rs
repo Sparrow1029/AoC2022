@@ -1,3 +1,4 @@
+/// Super inefficient way to do Day 8 of AoC 2022 -- but it does work, so yay.
 use crate::shared::{Coord2d, Grid};
 use std::collections::HashSet;
 
@@ -6,7 +7,8 @@ const SAMPLE_INPUT: &str = "\
 30373
 25512
 65332
-33549
+33549:wa
+
 35390";
 
 fn parse_grid(input: &str) -> Grid<usize> {
