@@ -1,9 +1,14 @@
-use std::cell::RefCell;
-use std::fs::File;
-use std::io::{self, BufRead};
-use std::path::Path;
-use std::rc::Rc;
+use custom_error::custom_error;
+use std::{
+    fs::File,
+    io::{self, BufRead},
+    path::Path,
+};
 
+custom_error! {pub GridError
+    OutOfBounds = "coord was out of bounds"
+
+}
 /// Returns an Iterator to the Reader of the lines of the file.
 pub fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
 where
@@ -94,11 +99,13 @@ where
             .collect()
     }
 
-    pub(crate) fn get_neighbors(&self, coord: GridCoord, diag: bool) -> Option<Vec<&T>> {
-        if !self.in_bounds(coord) {
-            return None;
-        }
+    pub(crate) fn get_neighbors(
+        &self,
+        coord: GridCoord,
+        diag: bool,
+    ) -> Result<Vec<GridCoord>, GridError> {
         let mut neighbors = vec![];
+        assert!(self.in_bounds(coord));
         let mut direction_diffs = vec![(-1, 0), (0, 1), (1, 0), (0, -1)];
         if diag {
             direction_diffs.extend_from_slice(&[(-1, 1), (1, 1), (1, -1), (-1, -1)]);
@@ -106,15 +113,13 @@ where
         for (x, y) in direction_diffs {
             let dx = coord.x as isize + x;
             let dy = coord.y as isize + y;
-            if dx < 0 || dx > self.width as isize {
-                continue;
-            } else if dy < 0 || dy > self.height as isize {
+            if dx < 0 || dx > self.width as isize || dy < 0 || dy > self.height as isize {
                 continue;
             } else {
-                neighbors.push(self.cell(coord).unwrap());
+                neighbors.push((dx as usize, dy as usize).into());
             }
         }
-        Some(neighbors)
+        Ok(neighbors)
     }
 
     pub(crate) fn get_row(&self, row: usize) -> &[T] {
