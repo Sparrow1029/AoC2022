@@ -1,5 +1,5 @@
 /// Super inefficient way to do Day 8 of AoC 2022 -- but it does work, so yay.
-use crate::shared::{Coord2d, Grid};
+use crate::shared::{Grid, GridCoord};
 use std::collections::HashSet;
 
 #[allow(dead_code)]
@@ -88,7 +88,7 @@ fn dbg_visible(visible: &HashSet<(usize, usize)>, grid: &Grid<usize>) {
     }
 }
 
-fn get_scenic_score(grid: &Grid<usize>, coord: Coord2d) -> usize {
+fn get_scenic_score(grid: &Grid<usize>, coord: GridCoord) -> usize {
     let (left, right) = grid.get_row(coord.y).split_at(coord.x);
     let col = grid.get_col(coord.x);
     let (up, down) = col.split_at(coord.y);

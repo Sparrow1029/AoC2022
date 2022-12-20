@@ -1,6 +1,8 @@
+use std::cell::RefCell;
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
+use std::rc::Rc;
 
 /// Returns an Iterator to the Reader of the lines of the file.
 pub fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
@@ -22,18 +24,18 @@ pub fn get_max_index_copy<T: Ord + Copy>(slice: &[T]) -> Option<usize> {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) struct Coord2d {
+pub(crate) struct GridCoord {
     pub(crate) x: usize,
     pub(crate) y: usize,
 }
 
-impl std::fmt::Debug for Coord2d {
+impl std::fmt::Debug for GridCoord {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "({}, {})", self.x, self.y)
     }
 }
 
-impl From<(usize, usize)> for Coord2d {
+impl From<(usize, usize)> for GridCoord {
     fn from((x, y): (usize, usize)) -> Self {
         Self { x, y }
     }
@@ -41,9 +43,9 @@ impl From<(usize, usize)> for Coord2d {
 
 #[derive(Debug)]
 pub(crate) struct Grid<T> {
-    width: usize,
-    height: usize,
-    data: Vec<T>,
+    pub width: usize,
+    pub height: usize,
+    pub data: Vec<T>,
 }
 
 impl<T> Grid<T>
@@ -58,18 +60,18 @@ where
         }
     }
 
-    fn in_bounds(&self, coord: Coord2d) -> bool {
+    fn in_bounds(&self, coord: GridCoord) -> bool {
         coord.x < self.width && coord.y < self.height
     }
 
-    pub(crate) fn cell_mut(&mut self, coord: Coord2d) -> Option<&mut T> {
+    pub(crate) fn cell_mut(&mut self, coord: GridCoord) -> Option<&mut T> {
         if !self.in_bounds(coord) {
             return None;
         }
         Some(&mut self.data[coord.y * self.width + coord.x])
     }
 
-    pub(crate) fn cell(&self, coord: Coord2d) -> Option<&T> {
+    pub(crate) fn cell(&self, coord: GridCoord) -> Option<&T> {
         if !self.in_bounds(coord) {
             return None;
         }
@@ -84,12 +86,35 @@ where
         self.height
     }
 
-    pub(crate) fn coords(&self) -> Vec<Coord2d> {
+    pub(crate) fn coords(&self) -> Vec<GridCoord> {
         self.data
             .iter()
             .enumerate()
             .map(|(i, _)| (i % self.width, i / self.height).into())
             .collect()
+    }
+
+    pub(crate) fn get_neighbors(&self, coord: GridCoord, diag: bool) -> Option<Vec<&T>> {
+        if !self.in_bounds(coord) {
+            return None;
+        }
+        let mut neighbors = vec![];
+        let mut direction_diffs = vec![(-1, 0), (0, 1), (1, 0), (0, -1)];
+        if diag {
+            direction_diffs.extend_from_slice(&[(-1, 1), (1, 1), (1, -1), (-1, -1)]);
+        }
+        for (x, y) in direction_diffs {
+            let dx = coord.x as isize + x;
+            let dy = coord.y as isize + y;
+            if dx < 0 || dx > self.width as isize {
+                continue;
+            } else if dy < 0 || dy > self.height as isize {
+                continue;
+            } else {
+                neighbors.push(self.cell(coord).unwrap());
+            }
+        }
+        Some(neighbors)
     }
 
     pub(crate) fn get_row(&self, row: usize) -> &[T] {
