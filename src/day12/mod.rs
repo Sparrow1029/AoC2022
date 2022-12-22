@@ -84,16 +84,13 @@ impl Grid<Cell> {
             }
             let neighbors = self.walkable_neighbors(curr).unwrap();
             for nbr in neighbors.iter() {
-                if !parent.contains_key(&nbr) {
+                if !parent.contains_key(nbr) {
                     parent.insert(*nbr, Some(curr));
                     queue.push_back(*nbr);
                 }
             }
         }
-        match backtrace(parent, start, end) {
-            Some(path) => Some(path),
-            None => None,
-        }
+        backtrace(parent, start, end)
     }
 
     fn get_coords_of_val(&self, val: u8) -> Vec<GridCoord> {
