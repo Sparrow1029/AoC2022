@@ -2,6 +2,7 @@ use custom_error::custom_error;
 use std::{
     fs::File,
     io::{self, BufRead},
+    ops::Add,
     path::Path,
 };
 
@@ -46,6 +47,16 @@ impl From<(usize, usize)> for GridCoord {
     }
 }
 
+impl Add for GridCoord {
+    type Output = GridCoord;
+    fn add(self, rhs: Self) -> Self::Output {
+        Self {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub(crate) struct Grid<T> {
     pub width: usize,
@@ -65,7 +76,7 @@ where
         }
     }
 
-    fn in_bounds(&self, coord: GridCoord) -> bool {
+    pub fn in_bounds(&self, coord: GridCoord) -> bool {
         coord.x < self.width && coord.y < self.height
     }
 
@@ -113,7 +124,8 @@ where
         for (x, y) in direction_diffs {
             let dx = coord.x as isize + x;
             let dy = coord.y as isize + y;
-            if dx < 0 || dx > self.width as isize || dy < 0 || dy > self.height as isize {
+            if dx < 0 || dx > (self.width as isize) - 1 || dy < 0 || dy > (self.height as isize) - 1
+            {
                 continue;
             } else {
                 neighbors.push((dx as usize, dy as usize).into());
