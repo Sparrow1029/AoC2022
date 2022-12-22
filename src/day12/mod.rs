@@ -70,8 +70,6 @@ impl Grid<Cell> {
         parent: &mut HashMap<GridCoord, Option<GridCoord>>,
         queue: &mut VecDeque<GridCoord>,
     ) -> Option<Vec<GridCoord>> {
-        // let mut parent: HashMap<GridCoord, Option<GridCoord>> = HashMap::new();
-        // let mut queue: VecDeque<GridCoord> = VecDeque::new();
         queue.push_back(start);
         parent.insert(start, None);
         while let Some(curr) = queue.pop_front() {
