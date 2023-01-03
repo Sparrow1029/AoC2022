@@ -270,6 +270,7 @@ where
     }
 }
 
+#[allow(dead_code)]
 pub(crate) fn get_neighbors<C>(coord: C, w: usize, h: usize, diag: bool) -> Option<Vec<Point>>
 where
     C: Into<Point>,
