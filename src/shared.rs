@@ -1,15 +1,24 @@
 use custom_error::custom_error;
+use std::thread::sleep;
+use std::time::Duration;
 use std::{
     fs::File,
     io::{self, BufRead},
-    ops::Add,
+    ops::{Add, AddAssign, Sub, SubAssign},
     path::Path,
 };
 
 custom_error! {pub GridError
-    OutOfBounds = "coord was out of bounds"
-
+    OutOfBounds = "coord was out of bounds",
+    NotFound = "Not found"
 }
+
+pub fn sleep_s(secs: u64, millis: u64) {
+    let mut duration = Duration::from_secs(secs);
+    duration += Duration::from_millis(millis);
+    sleep(duration);
+}
+
 /// Returns an Iterator to the Reader of the lines of the file.
 pub fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
 where
@@ -57,6 +66,74 @@ impl Add for GridCoord {
     }
 }
 
+impl From<Point> for GridCoord {
+    fn from(value: Point) -> Self {
+        Self {
+            x: value.x,
+            y: value.y,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Point {
+    pub x: usize,
+    pub y: usize,
+}
+
+impl From<(usize, usize)> for Point {
+    fn from(value: (usize, usize)) -> Self {
+        Self {
+            x: value.0,
+            y: value.1,
+        }
+    }
+}
+
+impl From<Point> for (usize, usize) {
+    fn from(value: Point) -> Self {
+        (value.x, value.y)
+    }
+}
+
+impl Sub for Point {
+    type Output = Point;
+    fn sub(self, rhs: Self) -> Self::Output {
+        Self {
+            x: self.x - rhs.x,
+            y: self.y - rhs.y,
+        }
+    }
+}
+
+impl Add for Point {
+    type Output = Point;
+    fn add(self, rhs: Self) -> Self::Output {
+        Self {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+        }
+    }
+}
+
+impl AddAssign for Point {
+    fn add_assign(&mut self, other: Self) {
+        *self = Self {
+            x: self.x + other.x,
+            y: self.y + other.y,
+        };
+    }
+}
+
+impl SubAssign for Point {
+    fn sub_assign(&mut self, other: Self) {
+        *self = Self {
+            x: self.x - other.x,
+            y: self.y - other.y,
+        };
+    }
+}
+
 #[derive(Debug)]
 pub(crate) struct Grid<T> {
     pub width: usize,
@@ -76,8 +153,12 @@ where
         }
     }
 
-    pub fn in_bounds(&self, coord: GridCoord) -> bool {
-        coord.x < self.width && coord.y < self.height
+    pub fn in_bounds<C>(&self, coord: C) -> bool
+    where
+        C: Into<GridCoord>,
+    {
+        let c = coord.into();
+        c.x < self.width && c.y < self.height
     }
 
     pub(crate) fn cell_mut(&mut self, coord: GridCoord) -> Option<&mut T> {
@@ -110,12 +191,12 @@ where
             .collect()
     }
 
-    pub(crate) fn get_neighbors(
-        &self,
-        coord: GridCoord,
-        diag: bool,
-    ) -> Result<Vec<GridCoord>, GridError> {
+    pub(crate) fn get_neighbors<C>(&self, coord: C, diag: bool) -> Result<Vec<GridCoord>, GridError>
+    where
+        C: Into<GridCoord>,
+    {
         let mut neighbors = vec![];
+        let coord = coord.into();
         assert!(self.in_bounds(coord));
         let mut direction_diffs = vec![(-1, 0), (0, 1), (1, 0), (0, -1)];
         if diag {
@@ -187,4 +268,27 @@ where
         }
         cols
     }
+}
+
+pub(crate) fn get_neighbors<C>(coord: C, w: usize, h: usize, diag: bool) -> Option<Vec<Point>>
+where
+    C: Into<Point>,
+{
+    let mut neighbors = vec![];
+    let coord = coord.into();
+
+    let mut direction_diffs = vec![(-1, 0), (0, 1), (1, 0), (0, -1)];
+    if diag {
+        direction_diffs.extend_from_slice(&[(-1, 1), (1, 1), (1, -1), (-1, -1)]);
+    }
+    for (x, y) in direction_diffs {
+        let dx = coord.x as isize + x;
+        let dy = coord.y as isize + y;
+        if dx < 0 || dx > (w as isize) - 1 || dy < 0 || dy > (h as isize) - 1 {
+            continue;
+        } else {
+            neighbors.push((dx as usize, dy as usize).into());
+        }
+    }
+    Some(neighbors)
 }

@@ -10,7 +10,7 @@
             "request": "launch",
             "program": "${workspaceRoot}/target/debug/aoc_2022",
             "args": [
-                "5"
+                "24"
             ],
             "cwd": "${workspaceRoot}",
         },
@@ -30,7 +30,7 @@
                 }
             },
             "args": [
-                "7"
+                "24"
             ],
             "cwd": "${workspaceFolder}"
         },
