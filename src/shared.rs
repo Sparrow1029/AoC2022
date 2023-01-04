@@ -134,6 +134,12 @@ impl SubAssign for Point {
     }
 }
 
+impl Point {
+    pub(crate) fn new(x: usize, y: usize) -> Self {
+        Self { x, y }
+    }
+}
+
 #[derive(Debug)]
 pub(crate) struct Grid<T> {
     pub width: usize,

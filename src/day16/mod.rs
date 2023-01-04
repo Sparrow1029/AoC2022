@@ -1,8 +1,9 @@
 use std::{
-    cmp::{max, min},
-    collections::HashMap,
+    cmp::Ordering,
+    collections::{BTreeSet, BinaryHeap, HashMap, HashSet, VecDeque},
 };
 
+use itertools::Itertools;
 use nom::{
     branch::alt,
     bytes::complete::tag,
@@ -12,259 +13,293 @@ use nom::{
     Finish, IResult,
 };
 
-const BOTH_PARTS: bool = false;
+const PART1_TIME_LIMIT: u32 = 30;
+const PART2_TIME_LIMIT: u32 = 26;
 
-type PuzzleData<'a> = (
-    Vec<&'a str>,
-    HashMap<&'a str, usize>,
-    Vec<Vec<usize>>,
-    Vec<i32>,
-);
+#[derive(Debug)]
+pub struct Valve<'a> {
+    pub flow: u32,
+    pub adjacent: HashSet<&'a str>,
+}
 
-fn parse_input(input: &str) -> IResult<&str, PuzzleData> {
-    let mut valves: Vec<&str> = Vec::new();
-    let mut flows: HashMap<&str, i32> = HashMap::new();
-    let mut conn: HashMap<&str, Vec<&str>> = HashMap::new();
-    let mut positions: HashMap<&str, usize> = HashMap::new();
+#[derive(PartialEq, Eq)]
+struct Node<'a> {
+    cost: u32,
+    curr: &'a str,
+}
+
+impl<'a> Ord for Node<'a> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        other.cost.cmp(&self.cost)
+    }
+}
+
+impl<'a> PartialOrd for Node<'a> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+/// Get lowest cost to move from a valve to another valve
+fn min_cost(from: &str, to: &str, map: &HashMap<&str, Valve>) -> u32 {
+    // shortest path:
+    // Dijkstra's algorithm
+    // nodes in the priority queue are sorted so the lowest cost gets popped first
+    let mut pq = BinaryHeap::new();
+    // prevent backtracking by keeping track of seen valve rooms
+    let mut seen = HashSet::new();
+
+    pq.push(Node {
+        cost: 0,
+        curr: from,
+    });
+    seen.insert(from);
+
+    while let Some(Node { cost, curr }) = pq.pop() {
+        if curr == to {
+            return cost;
+        }
+        for next in map[curr].adjacent.iter() {
+            // HashSet returns `true` if item was not already in the set
+            if seen.insert(next) {
+                pq.push(Node {
+                    cost: cost + 1,
+                    curr: next,
+                });
+            }
+        }
+    }
+    u32::MAX
+}
+
+/// map shortest distance from "AA" to any flowing valve
+/// map shortest distance from any flowing valve to any other
+fn min_distances<'a>(map: &'a HashMap<&str, Valve>) -> HashMap<(&'a str, &'a str), u32> {
+    map.iter()
+        // only keep flowing valves
+        .filter(|(_, valve)| valve.flow > 0)
+        // get names of those valves
+        .map(|(&name, _)| name)
+        // iter over every combo of 2 flowing valves
+        .tuple_combinations()
+        // record shorted distance between those 2
+        // (and the dist from "AA" to flowing valve bc that is the starting point)
+        .fold(HashMap::new(), |mut acc, (name1, name2)| {
+            // from AA to name1
+            acc.entry(("AA", name1))
+                .or_insert_with(|| min_cost("AA", name1, map));
+            // from AA to name2
+            acc.entry(("AA", name2))
+                .or_insert_with(|| min_cost("AA", name2, map));
+            let dist = min_cost(name1, name2, map);
+            // from name1 to name2
+            acc.insert((name1, name2), dist);
+            // from name2 to name1
+            acc.insert((name2, name1), dist);
+
+            acc
+        })
+}
+
+/// Contain current state of open valves for simulation
+#[derive(Debug, Hash, PartialEq, Eq, Clone)]
+struct State<'a> {
+    opened: BTreeSet<&'a str>,
+    curr: &'a str,
+    elapsed: u32,
+    relieved: u32,
+}
+
+/// All flowing valves are open, wait until time limit is reached
+fn wait_until_times_up(
+    max_time: u32,
+    elapsed: u32,
+    relieved: u32,
+    opened: &BTreeSet<&str>,
+    map: &HashMap<&str, Valve>,
+) -> u32 {
+    let time_left = max_time - elapsed;
+    let relieved_per_minute: u32 = opened.iter().map(|name| &map[name].flow).sum();
+    relieved + (relieved_per_minute * time_left)
+}
+
+pub fn part1(input: &str) -> u32 {
+    let map = parse_input(input).finish().unwrap().1;
+    let dist_map = min_distances(&map); // key: (from, to), value: move_cost
+    let flowing: HashSet<_> = map
+        .iter()
+        .filter(|(_, valve)| valve.flow > 0)
+        .map(|(&name, _)| name)
+        .collect();
+
+    let mut max_relieved = 0;
+    let mut q = VecDeque::new();
+    let mut seen = HashSet::new();
+
+    q.push_back(State {
+        curr: "AA",
+        opened: BTreeSet::new(),
+        elapsed: 0,
+        relieved: 0,
+    });
+    // current position doesn't matter for `seen`
+    seen.insert((BTreeSet::new(), 0, 0));
+
+    while let Some(State {
+        opened,
+        curr,
+        elapsed,
+        relieved,
+    }) = q.pop_front()
+    {
+        // If all flowing valves are already open, wait until the end
+        if opened.len() == flowing.len() || elapsed >= PART1_TIME_LIMIT {
+            let relieved_at_end =
+                wait_until_times_up(PART1_TIME_LIMIT, elapsed, relieved, &opened, &map);
+            max_relieved = max_relieved.max(relieved_at_end);
+            continue;
+        }
+        // for every unopened valve, run the simulation/traverse graph
+        let unopened = flowing.iter().filter(|name| !opened.contains(*name));
+
+        for dest in unopened {
+            // how long would moving to dest take? +1 to open the valve
+            let cost = dist_map[&(curr, *dest)] + 1;
+            let new_elapsed = elapsed + cost;
+            // if openeing the dest valve would exceed the time limit, wait until the end
+            if new_elapsed >= PART1_TIME_LIMIT {
+                let relieved_at_end =
+                    wait_until_times_up(PART1_TIME_LIMIT, elapsed, relieved, &opened, &map);
+                max_relieved = max_relieved.max(relieved_at_end);
+                continue;
+            }
+
+            // relieve pressure of opened valves while we move to dest and open the valve there
+            let relieved_per_minute: u32 = opened.iter().map(|name| &map[name].flow).sum();
+            let new_relieved = relieved + relieved_per_minute * cost;
+            // add opened valve to opened valve HashSet
+            let mut new_opened = opened.clone();
+            new_opened.insert(dest);
+
+            if seen.insert((new_opened.clone(), new_elapsed, new_relieved)) {
+                q.push_back(State {
+                    opened: new_opened,
+                    curr: dest,
+                    elapsed: new_elapsed,
+                    relieved: new_relieved,
+                });
+            }
+        }
+    }
+    max_relieved
+}
+
+fn part2(input: &str) -> u32 {
+    let map = parse_input(input).finish().unwrap().1;
+    let dist_map = min_distances(&map); // key: (from, to), value: move_cost
+    let flowing: HashSet<_> = map
+        .iter()
+        .filter(|(_, valve)| valve.flow > 0)
+        .map(|(&name, _)| name)
+        .collect();
+
+    // key: opened, val: relieved_at_end
+    let mut max_relieved_states: HashMap<BTreeSet<&str>, u32> = HashMap::new();
+
+    let mut q = VecDeque::new();
+    q.push_back(State {
+        curr: "AA",
+        opened: BTreeSet::new(),
+        elapsed: 0,
+        relieved: 0,
+    });
+
+    while let Some(State {
+        opened,
+        curr,
+        elapsed,
+        relieved,
+    }) = q.pop_front()
+    {
+        let relieved_at_end =
+            wait_until_times_up(PART2_TIME_LIMIT, elapsed, relieved, &opened, &map);
+        // record state. only update state if it beats the `relieved_at_end` value
+        max_relieved_states
+            .entry(opened.clone())
+            .and_modify(|val| *val = relieved_at_end.max(*val))
+            .or_insert(relieved_at_end);
+
+        // if all flowing valves are opened or time limit is reached, skip
+        if opened.len() == flowing.len() || elapsed >= PART2_TIME_LIMIT {
+            continue;
+        }
+        // for every unopened valve, run simulation
+        let unopened = flowing.iter().filter(|name| !opened.contains(*name));
+
+        for dest in unopened {
+            // how long would moving to dest take? +1 to open the valve
+            let cost = dist_map[&(curr, *dest)] + 1;
+            let new_elapsed = elapsed + cost;
+            // if openeing the dest valve would exceed the time limit, wait until the end
+            if new_elapsed >= PART2_TIME_LIMIT {
+                continue;
+            }
+
+            // relieve pressure of opened valves while we move to dest and open the valve there
+            let relieved_per_minute: u32 = opened.iter().map(|name| &map[name].flow).sum();
+            let new_relieved = relieved + relieved_per_minute * cost;
+
+            // add opened valve to opened valve HashSet
+            let mut new_opened = opened.clone();
+            new_opened.insert(dest);
+
+            q.push_back(State {
+                opened: new_opened,
+                curr: dest,
+                elapsed: new_elapsed,
+                relieved: new_relieved,
+            });
+        }
+    }
+
+    max_relieved_states
+        .iter()
+        .tuple_combinations()
+        .filter(|(human, elephant)| human.0.is_disjoint(elephant.0))
+        .map(|(human, elephant)| human.1 + elephant.1)
+        .max()
+        .unwrap()
+}
+
+fn parse_input(input: &str) -> IResult<&str, HashMap<&str, Valve>> {
+    let mut valves = HashMap::new();
     for line in input.lines() {
-        let (_, (_, valve_id, _, rate, _, _, leads_to)) = tuple((
+        let (_, (_, id, _, flow, _, _, adjacent)) = tuple((
             tag("Valve "),
             alpha1,
             tag(" has flow rate="),
-            cc::i32,
+            cc::u32,
             alt((tag("; tunnels lead to "), tag("; tunnel leads to "))),
             alt((tag("valves "), tag("valve "))),
             separated_list0(tag(", "), alpha1),
         ))(line)?;
-        // valves.insert(id.to_string(), Valve::new(id, rate, leads_to));
-        valves.push(valve_id);
-        flows.insert(valve_id, rate);
-        leads_to
-            .iter()
-            .for_each(|c| conn.entry(valve_id).or_insert(Vec::new()).push(c));
-        positions.insert(valve_id, valves.len() - 1);
+        valves.insert(
+            id,
+            Valve {
+                flow,
+                adjacent: adjacent.into_iter().collect(),
+            },
+        );
     }
-    let conn_num: Vec<Vec<usize>> = valves
-        .iter()
-        .map(|v| {
-            conn.get(v)
-                .unwrap()
-                .iter()
-                .map(|c| *positions.get(c).unwrap())
-                .collect()
-        })
-        .collect();
-    let flows_num: Vec<i32> = valves.iter().map(|v| *flows.get(v).unwrap()).collect();
-    Ok((input, (valves, positions, conn_num, flows_num)))
-}
-
-fn dfs(
-    pos: usize,
-    time: i32,
-    conn: &Vec<Vec<usize>>,
-    flows: &Vec<i32>,
-    opened: &mut Vec<bool>,
-    cache: &mut HashMap<(usize, i32, Vec<bool>), i32>,
-    min_depth: &mut usize,
-) -> i32 {
-    // Time has run out
-    if time <= 0 {
-        return 0;
-    }
-    // All valves are opened, we just wait now
-    if opened.iter().all(|v| *v) {
-        return 0;
-    }
-    // Check cache to see if answer is already computed for this state
-    if let Some(v) = cache.get(&(pos, time, (*opened).clone())) {
-        return *v;
-    }
-    // Do not open if this valve is already open, or this valve has no flow rate
-    let do_not_open = opened[pos] || flows[pos] == 0;
-    let if_open: i32;
-    if !do_not_open {
-        // open this valve...
-        opened[pos] = true;
-        // Then keep computing the total flow if this valve is opened
-        if_open =
-            flows[pos] * (time - 1) + dfs(pos, time - 1, conn, flows, opened, cache, min_depth);
-        // and re-close it for the next iteration
-        opened[pos] = false;
-    } else {
-        // flow was 0 or this valve was already open, set to min_flow (0)
-        if_open = 0;
-    }
-    // For each connection from this valve, calculate std::cmp::max(total flow `if_open`, recursive dfs total_flow)
-    let max_flow = max(
-        if_open,
-        conn[pos]
-            .iter()
-            .map(|s| dfs(*s, time - 1, conn, flows, opened, cache, min_depth))
-            .max()
-            .unwrap(),
-    );
-    // Insert max_flow result into cache for memoization
-    cache.insert((pos, time, (*opened).clone()), max_flow);
-    max_flow
-}
-
-fn part_1(input: &str) {
-    let (valves, positions, conn_num, flows_num) = parse_input(input).finish().unwrap().1;
-    // println!(
-    //     "valves: {valves:?}\npos: {positions:?}\nconn_num: {conn_num:?}\nflows_num: {flows_num:?}"
-    // );
-    let mut visited = vec![false; valves.len()];
-    let mut cache: HashMap<(usize, i32, Vec<bool>), i32> = HashMap::new();
-    let mut min_depth = usize::MAX;
-    let max_flow = dfs(
-        positions["AA"],
-        30,
-        &conn_num,
-        &flows_num,
-        &mut visited,
-        &mut cache,
-        &mut min_depth,
-    );
-    println!("Part 1: {max_flow}");
-}
-
-/// Turning off for now... too slow
-fn part_2(input: &str) {
-    let (_, positions, conn_num, flows_num) = parse_input(input).finish().unwrap().1;
-    fn dfs(
-        one: usize,
-        two: usize,
-        time: i32,
-        conn: &Vec<Vec<usize>>,
-        flows: &Vec<i32>,
-        opened: u64,
-        cache: &mut HashMap<(usize, usize, i32, u64), i32>,
-    ) -> i32 {
-        if time <= 0 {
-            return 0;
-        }
-        if opened == (1 << (1 + conn.len())) - 1 {
-            return 0;
-        }
-        let my_pos = min(one, two);
-        let el_pos = max(one, two);
-
-        if let Some(res) = cache.get(&(my_pos, el_pos, time, opened)) {
-            return *res;
-        }
-        let opened_el = (opened & (1 << el_pos)) != 0;
-        let opened_my = (opened & (1 << my_pos)) != 0;
-        let me_do_not_open = opened_my || flows[my_pos] == 0;
-        let el_do_not_open = opened_el || flows[el_pos] == 0;
-        let both_do_not_open = me_do_not_open && el_do_not_open;
-
-        // both open
-        let both_open = if me_do_not_open || el_do_not_open || el_pos == my_pos {
-            0
-        } else {
-            let opened = opened | (1 << my_pos) | (1 << el_pos);
-            (flows[my_pos] + flows[el_pos]) * (time - 1)
-                + dfs(my_pos, el_pos, time - 1, conn, flows, opened, cache)
-        };
-        let mut max_flow = both_open;
-
-        if !both_do_not_open {
-            if el_do_not_open {
-                let opened = opened | (1 << my_pos);
-                max_flow = max_flow.max(
-                    flows[my_pos] * (time - 1)
-                        + conn[el_pos]
-                            .iter()
-                            .map(|el_next_pos| {
-                                dfs(my_pos, *el_next_pos, time - 1, conn, flows, opened, cache)
-                            })
-                            .max()
-                            .unwrap(),
-                );
-            } else if me_do_not_open {
-                let opened = opened | (1 << el_pos);
-                max_flow = max_flow.max(
-                    flows[el_pos] * (time - 1)
-                        + conn[my_pos]
-                            .iter()
-                            .map(|my_next_pos| {
-                                dfs(*my_next_pos, el_pos, time - 1, conn, flows, opened, cache)
-                            })
-                            .max()
-                            .unwrap(),
-                );
-            } else {
-                let opened_1 = opened | (1 << my_pos);
-                max_flow = max_flow.max(
-                    flows[my_pos] * (time - 1)
-                        + conn[el_pos]
-                            .iter()
-                            .map(|el_next_pos| {
-                                dfs(my_pos, *el_next_pos, time - 1, conn, flows, opened_1, cache)
-                            })
-                            .max()
-                            .unwrap(),
-                );
-                let opened_2 = opened | (1 << el_pos);
-                max_flow = max_flow.max(
-                    flows[el_pos] * (time - 1)
-                        + conn[my_pos]
-                            .iter()
-                            .map(|my_next_pos| {
-                                dfs(*my_next_pos, el_pos, time - 1, conn, flows, opened_2, cache)
-                            })
-                            .max()
-                            .unwrap(),
-                );
-            }
-        }
-        if both_open == 0 {
-            let both_go = conn[my_pos]
-                .iter()
-                .map(|my_next_pos| {
-                    conn[el_pos]
-                        .iter()
-                        .map(|el_next_pos| {
-                            dfs(
-                                *my_next_pos,
-                                *el_next_pos,
-                                time - 1,
-                                conn,
-                                flows,
-                                opened,
-                                cache,
-                            )
-                        })
-                        .max()
-                        .unwrap()
-                })
-                .max()
-                .unwrap();
-            max_flow = max_flow.max(both_go);
-        }
-
-        cache.insert((my_pos, el_pos, time, opened), max_flow);
-        max_flow
-    }
-
-    let mut cache: HashMap<(usize, usize, i32, u64), i32> = HashMap::new();
-    let max_flow = dfs(
-        positions["AA"],
-        positions["AA"],
-        26,
-        &conn_num,
-        &flows_num,
-        0,
-        &mut cache,
-    );
-    println!("Part 2: {max_flow}");
+    Ok((input, valves))
 }
 
 pub fn run() {
     println!("\n=== Day 16 ===");
     let input = include_str!("input.txt");
-    part_1(input);
-    if BOTH_PARTS {
-        part_2(input);
-    }
+    // for (k, v) in parse_input(input).finish().unwrap().1.iter() {
+    //     println!("{k}: {v:?}");
+    // }
+    println!("Part 1: {}", part1(input));
+    println!("Part 2: {}", part2(input));
 }

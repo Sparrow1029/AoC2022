@@ -3,6 +3,7 @@
 #![feature(slice_flatten)]
 use std::env::args;
 
+#[allow(dead_code)]
 mod shared;
 
 mod day01;
@@ -21,6 +22,7 @@ mod day13;
 mod day14;
 mod day15;
 mod day16;
+#[allow(clippy::all, dead_code, unused_variables)]
 mod day17;
 mod day18;
 mod day19;
