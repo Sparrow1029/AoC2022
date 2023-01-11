@@ -162,6 +162,7 @@ pub fn run() {
         debug_println!("{}", grove.get_map_string());
         if grove.step == 10 {
             println!("Part 1: {}", grove.get_empty_area());
+            break;
         }
     }
     // println!("Part 2: {}", grove.step + 1)

@@ -278,8 +278,8 @@ impl State {
                 if self.total_pieces == num_rocks_to_fall {
                     break 'outer;
                 }
-                println!("Current state: {:?}", self.field);
-                print!("Shape: {:?} -> [", piece.shape);
+                // println!("Current state: {:?}", self.field);
+                // print!("Shape: {:?} -> [", piece.shape);
                 let mut next_state = self.field.clone();
                 for i in 0..7 {
                     // start 3 spaces up from cur top
@@ -289,7 +289,7 @@ impl State {
                 }
                 loop {
                     let direction = self.directions[self.cur_dir_idx % self.directions.len()];
-                    print!("{direction:?}, ");
+                    // print!("{direction:?}, ");
                     self.cur_dir_idx += 1;
 
                     if self.check_piece_can_slide(&piece, direction, &next_state, &self.field) {
@@ -300,7 +300,7 @@ impl State {
                     }
                     piece.fall(&mut next_state);
                 }
-                print!("\x08\x08 \x08]\n   New state:  {:?}\n\n", next_state);
+                // print!("\x08\x08 \x08]\n   New state:  {:?}\n\n", next_state);
                 self.total_pieces += 1;
                 self.field = next_state;
                 self.cur_height = *(self.field.iter().max().unwrap());

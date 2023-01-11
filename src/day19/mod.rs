@@ -55,10 +55,10 @@ impl Factory {
             let (ore, other) = Factory::get_costs(*(self.robot_costs.get(&robot_type).unwrap()));
             match robot_type {
                 Robot::Geode => {
-                    println!(
-                        "{robot_type:?} -> Need ({ore}, {other}). Have ({}, {})",
-                        self.ore, self.obsidian
-                    );
+                    // println!(
+                    //     "{robot_type:?} -> Need ({ore}, {other}). Have ({}, {})",
+                    //     self.ore, self.obsidian
+                    // );
                     if self.ore > 0
                         && self.obsidian > 0
                         && self.ore >= ore
@@ -70,10 +70,10 @@ impl Factory {
                     }
                 }
                 Robot::Obsidian => {
-                    println!(
-                        "{robot_type:?} -> Need ({ore}, {other}). Have ({}, {})",
-                        self.ore, self.clay
-                    );
+                    // println!(
+                    //     "{robot_type:?} -> Need ({ore}, {other}). Have ({}, {})",
+                    //     self.ore, self.clay
+                    // );
                     if self.robots[&Robot::Obsidian] > 2 {
                         if !(self.robots[&Robot::Geode] > 0) {
                             continue;
@@ -86,10 +86,10 @@ impl Factory {
                     }
                 }
                 Robot::Clay => {
-                    println!(
-                        "{robot_type:?} -> Need ({ore}, {other}). Have ({}, 0)",
-                        self.ore
-                    );
+                    // println!(
+                    //     "{robot_type:?} -> Need ({ore}, {other}). Have ({}, 0)",
+                    //     self.ore
+                    // );
                     if self.robots[&Robot::Clay] > 2 {
                         if !(self.robots[&Robot::Geode] > 2) && !(self.robots[&Robot::Obsidian] > 1)
                         {
@@ -102,10 +102,10 @@ impl Factory {
                     }
                 }
                 Robot::Ore => {
-                    println!(
-                        "{robot_type:?} -> Need ({ore}, {other}). Have ({}, 0)",
-                        self.ore
-                    );
+                    // println!(
+                    //     "{robot_type:?} -> Need ({ore}, {other}). Have ({}, 0)",
+                    //     self.ore
+                    // );
                     if (self.robots[&Robot::Clay] > 3)
                         && (self.robots[&Robot::Obsidian] > 2)
                         && (self.robots[&Robot::Geode] > 1)
@@ -121,8 +121,8 @@ impl Factory {
         None
     }
     fn cycle(&mut self, minutes: usize) {
-        for i in 0..minutes {
-            println!("\nMinute {i}");
+        for _ in 0..minutes {
+            // println!("\nMinute {i}");
             let build_robot = self.build_robot();
             for (robot, count) in self.robots.iter() {
                 if *count > 0 {
@@ -192,10 +192,13 @@ fn parse(input: &str) -> IResult<&str, Vec<Factory>> {
 }
 
 pub fn run() {
-    println!("{SAMPLE_INPUT}");
+    println!("\n=== Day 19 ===");
+    // println!("{SAMPLE_INPUT}");
     let mut factories = parse(SAMPLE_INPUT).finish().unwrap().1;
     factories[0].cycle(24);
-    println!("{:?}", factories[0])
+    println!("Part 1: TODO!!");
+    println!("Part 2: TODO!!");
+    // println!("{:?}", factories[0])
 }
 
 const SAMPLE_INPUT: &str = "\

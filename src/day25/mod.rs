@@ -38,4 +38,5 @@ pub fn run() {
     let input = include_str!("input.txt");
     let part1 = input.lines().map(to_decimal).sum::<i64>();
     println!("Part 1: {}", to_snafu(part1));
+    println!("Part 2: Merry Christmas!!");
 }
