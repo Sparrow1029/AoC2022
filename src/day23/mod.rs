@@ -1,4 +1,4 @@
-use crate::shared::sleep_s;
+use debug_print::debug_println;
 use std::collections::{HashMap, HashSet};
 mod shared;
 const N: [(isize, isize); 3] = [(0, -1), (1, -1), (-1, -1)]; // Look N, NE, NW
@@ -121,6 +121,7 @@ impl Grove {
         ((max.x + 1 - min.x) * (max.y + 1 - min.y)) - self.elf_map.len() as isize
     }
 
+    #[cfg(debug_assertions)]
     fn get_map_string(&self) -> String {
         let mut map_string = String::new();
 
@@ -157,11 +158,12 @@ pub fn run() {
     let input = include_str!("input.txt");
     let mut grove = Grove::from(input);
     while grove.move_elves() {
-        // print!("\x1B[2J\x1B[1;1H");
-        // println!("{}", grove.get_map_string());
+        debug_println!("\x1B[2J\x1B[1;1H");
+        debug_println!("{}", grove.get_map_string());
         if grove.step == 10 {
             println!("Part 1: {}", grove.get_empty_area());
         }
     }
-    println!("Part 2: {}", grove.step + 1)
+    // println!("Part 2: {}", grove.step + 1)
+    println!("Part 2: Too slow! need to speed it up.")
 }
